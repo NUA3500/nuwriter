@@ -329,12 +329,16 @@ def __img_erase(dev, media, start, length, option) -> int:
     if int.from_bytes(ack, byteorder="little") != ACK:
         print("Receive ACK error")
         return -1
-    bar = tqdm(total=length, position=dev.get_id(), ascii=True)
+    bar = tqdm(total=100, position=dev.get_id(), ascii=True)
+    previous_progress = 0
     while True:
+        # xusb ack with total erase progress.
         ack = dev.read(4)
-        if (int.from_bytes(ack, byteorder="little") >> 16) & 0xFFFF:
+        if int.from_bytes(ack, byteorder="little") <= 100:
+            bar.update(int.from_bytes(ack, byteorder="little") - previous_progress)
+            previous_progress = int.from_bytes(ack, byteorder="little")
+        if int.from_bytes(ack, byteorder="little") == 100:
             break
-        bar.update(int.from_bytes(ack, byteorder="little") & 0xFFFF)
     bar.close()
     return 0
 
@@ -659,13 +663,17 @@ def do_img_read(media, start, out_file_name, length=0x1, option=OPT_NONE) -> Non
     if int.from_bytes(ack, byteorder="little") != ACK:
         print("Receive ACK error")
         return -1
-
+    # FIXME: Don't know real length for "read all"
     bar = tqdm(total=length, ascii=True)
     data = b''
     remain = length
 
-    while remain > 0:
-        xfer_size = TRANSFER_SIZE if remain > TRANSFER_SIZE else remain
+    while True:
+        ack = dev.read(4)
+        # Get the transfer length of next read
+        xfer_size = int.from_bytes(ack, byteorder="little")
+        if xfer_size == 0:
+            break
         data += dev.read(xfer_size)
         dev.write(xfer_size.to_bytes(4, byteorder='little'))    # ack
         remain -= xfer_size
