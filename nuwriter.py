@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # NOTE: This script is test under Python 3.x
 
-__copyright__ = "Copyright (C) 2020 Nuvoton Technology Corp. All rights reserved"
+__copyright__ = "Copyright (C) 2020~2021 Nuvoton Technology Corp. All rights reserved"
 __version__ = "v0.35"
 
 import os
@@ -343,9 +343,7 @@ def __img_erase(dev, media, start, length, option) -> int:
 def do_img_erase(media, start, length=0, option=OPT_NONE) -> None:
     global mp_mode
 
-    # devices = XUsbComList(attach_all=mp_mode).get_dev()
-    _XUsbComList = XUsbComList(attach_all=mp_mode)
-    devices = _XUsbComList.get_dev()
+    devices = XUsbComList(attach_all=mp_mode).get_dev()
     if len(devices) == 0:
         print("Device not found")
         sys.exit(2)
@@ -412,9 +410,8 @@ def __otp_program(dev, opt_writer, opt_data, option) -> int:
 def do_otp_program(opt_file_name) -> None:
     global mp_mode
 
-    # devices = XUsbComList(attach_all=mp_mode).get_dev()
-    _XUsbComList = XUsbComList(attach_all=mp_mode)
-    devices = _XUsbComList.get_dev()
+    devices = XUsbComList(attach_all=mp_mode).get_dev()
+
     if len(devices) == 0:
         print("Device not found")
         sys.exit(2)
@@ -515,9 +512,8 @@ def __pack_program(dev, media, pack_image, option) -> int:
 def do_pack_program(media, pack_file_name, option=OPT_NONE) -> None:
     global mp_mode
 
-    # devices = XUsbComList(attach_all=mp_mode).get_dev()
-    _XUsbComList = XUsbComList(attach_all=mp_mode)
-    devices = _XUsbComList.get_dev()
+    devices = XUsbComList(attach_all=mp_mode).get_dev()
+
     if len(devices) == 0:
         print("Device not found")
         sys.exit(2)
@@ -614,9 +610,8 @@ def __img_program(dev, media, start, img_data, option) -> int:
 def do_img_program(media, start, image_file_name, option=OPT_NONE) -> None:
     global mp_mode
 
-    # devices = XUsbComList(attach_all=mp_mode).get_dev()
-    _XUsbComList = XUsbComList(attach_all=mp_mode)
-    devices = _XUsbComList.get_dev()
+    devices = XUsbComList(attach_all=mp_mode).get_dev()
+
     if len(devices) == 0:
         print("Device not found")
         sys.exit(2)
@@ -645,9 +640,8 @@ def do_img_program(media, start, image_file_name, option=OPT_NONE) -> None:
 
 def do_img_read(media, start, out_file_name, length=0x1, option=OPT_NONE) -> None:
     # only support read from 1 device
-    # devices = XUsbComList(attach_all=False).get_dev()
-    _XUsbComList = XUsbComList(attach_all=False)
-    devices = _XUsbComList.get_dev()
+    devices = XUsbComList(attach_all=False).get_dev()
+
     if len(devices) == 0:
         print("Device not found")
         sys.exit(2)
@@ -788,9 +782,8 @@ def do_attach(ini_file_name, mp_mode1=False) -> None:
         print("Open xusb.bin failed")
         sys.exit(err)
 
-    # devices = XUsbComList(attach_all=mp_mode1).get_dev()
-    _XUsbComList = XUsbComList(attach_all=mp_mode1)
-    devices = _XUsbComList.get_dev()
+    devices = XUsbComList(attach_all=mp_mode1).get_dev()
+
     if len(devices) == 0:
         print("Device not found")
         sys.exit(2)
@@ -820,9 +813,8 @@ def do_attach(ini_file_name, mp_mode1=False) -> None:
     time.sleep(1)
     print("Get device info")
 
-    # devices = XUsbComList(attach_all=mp_mode1).get_dev()
-    _XUsbComListNew = XUsbComList(attach_all=mp_mode1)
-    devices = _XUsbComListNew.get_dev()
+    devices = XUsbComList(attach_all=mp_mode1).get_dev()
+
     if len(devices) == 0:
         print("Device not found")
         sys.exit(2)
@@ -1174,9 +1166,8 @@ def __msc(dev, media, reserve, option) -> int:
 def do_msc(media, reserve, option=OPT_NONE) -> None:
     global mp_mode
 
-    # devices = XUsbComList(attach_all=mp_mode).get_dev()
-    _XUsbComList = XUsbComList(attach_all=mp_mode)
-    devices = _XUsbComList.get_dev()
+    devices = XUsbComList(attach_all=mp_mode).get_dev()
+
     if len(devices) == 0:
         print("Device not found")
         sys.exit(2)
