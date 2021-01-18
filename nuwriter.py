@@ -1301,7 +1301,7 @@ def main():
             sys.exit(err)
 
         if str.upper(args.read[1]) == 'ALL':
-            do_img_read(media, 0, args.read[2], option)
+            do_img_read(media, 0, args.read[2], 0, option)
         else:
             try:
                 start = int(args.read[1], 0)
