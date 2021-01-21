@@ -21,6 +21,16 @@ DEV_OTP = 6
 DEV_USBH = 7
 DEV_UNKNOWN = 0xFF
 
+# Command options
+OPT_NONE = 0
+OPT_SCRUB = 1       # For erase, use with care
+OPT_WITHBAD = 1     # For read
+OPT_EXECUTE = 2     # For write
+OPT_VERIFY = 3      # For write
+OPT_UNPACK = 4      # For pack
+OPT_RAW = 5         # For write
+OPT_EJECT = 6      # For msc
+
 # class SdEmmcPage(QWidget):
 #     def __init__(self, media, parent=None):
 #         super(SdEmmcPage, self).__init__(parent)
@@ -106,13 +116,22 @@ class SpiPage(QWidget):
         spiLayout.addRow(QLabel("Image type"), imgTypeLayout)
         spiLayout.addRow(QLabel("Image addr."), self.imgAddress)
 
+        # if option == OPT_RAW and media != DEV_NAND:
+        #     raise ValueError(f"Do not support raw write on {str.upper(args.write[0])}")
+
         if self._media == DEV_NAND:
-            self.rawWrite = QCheckBox('OPT_RAW')
-            spiLayout.addRow(QLabel("Option"), self.rawWrite)
-
-
-
-
+            self.normalWrite = QRadioButton('None')
+            self.rawWrite = QRadioButton('Raw Write')
+            self.verifyWrite = QRadioButton('Verify')
+            _optLayout = QHBoxLayout()
+            _optLayout.addWidget(self.normalWrite)
+            _optLayout.addWidget(self.rawWrite)
+            _optLayout.addWidget(self.verifyWrite)
+            _optLayout.addStretch()
+            spiLayout.addRow(QLabel("Option"), _optLayout)
+        else:
+            self.verifyWrite = QCheckBox('Verify')
+            spiLayout.addRow(QLabel("Option"), self.verifyWrite)
 
         spiGroup.setLayout(spiLayout)
         self.mainLayout.addWidget(spiGroup)
@@ -143,6 +162,10 @@ class SpiPage(QWidget):
 
         layout.addRow(QLabel("Save file"), _fileLayout)
         layout.addRow(QLabel("Range"), _rangeLayout)
+
+        if self._media in [DEV_NAND, DEV_SPINAND]:
+            self.readWithBad = QCheckBox('With Bad')
+            layout.addRow(QLabel("Option"), self.readWithBad)
 
         group.setLayout(layout)
         self.mainLayout.addWidget(group)
@@ -195,7 +218,19 @@ class SpiPage(QWidget):
         _address = self.imgAddress.text()
         _media = self._media
         _ispack = self.radioPack.isChecked()
-        self.signalImgProgram.emit(_media, _address , _file, 0, _ispack)
+
+        _option = OPT_NONE
+
+        if _media == DEV_NAND:
+            if self.normalWrite.isChecked():
+                _option = OPT_NONE
+            elif self.rawWrite.isChecked():
+                _option = OPT_RAW
+
+        if self.verifyWrite.isChecked():
+            _option = OPT_VERIFY
+
+        self.signalImgProgram.emit(_media, _address , _file, _option, _ispack)
 
     def readMedia(self):
         _file = self.fileSave.text()
@@ -203,7 +238,13 @@ class SpiPage(QWidget):
         _end = self.readEnd.text()
         _media = self._media
         _isall = self.readAll.isChecked()
-        self.signalImgRead.emit(_media, _start , _file, _end, 0, _isall)
+
+        _option = OPT_NONE
+
+        if _media in [DEV_NAND, DEV_SPINAND] and self.readWithBad.isChecked():
+            _option = OPT_WITHBAD
+
+        self.signalImgRead.emit(_media, _start , _file, _end, _option, _isall)
 
     def eraseMedia(self):
         _start = self.eraseStart.text()

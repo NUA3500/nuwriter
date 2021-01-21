@@ -8,7 +8,12 @@ import os
 # but, with dispose_resources, the command tool raises timeout error.
 
 # from nuwriter import *
-from nuwriterTEMP import *
+from nuwriterTEMP import (DEV_DDR_SRAM, DEV_NAND, DEV_OTP, DEV_SD_EMMC,
+        DEV_SPINAND, DEV_SPINOR, DEV_USBH,
+        OPT_NONE, OPT_SCRUB, OPT_WITHBAD, OPT_EXECUTE, OPT_VERIFY,
+        OPT_UNPACK, OPT_RAW, OPT_EJECT,
+        do_attach, do_img_erase, do_img_program, do_img_read, do_otp_program,
+        do_pack_program)
 
 class EmittingStream(QtCore.QObject):
 
@@ -142,10 +147,12 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.conf.set(sec, 'write file', '')
                 self.conf.set(sec, 'write addr', '')
                 self.conf.set(sec, 'write pack', 'false')
+                self.conf.set(sec, 'write option', '')
                 self.conf.set(sec, 'read file', '')
                 self.conf.set(sec, 'read start', '')
                 self.conf.set(sec, 'read length', '')
                 self.conf.set(sec, 'read all', 'false')
+                self.conf.set(sec, 'read option', '')
                 self.conf.set(sec, 'erase start', '')
                 self.conf.set(sec, 'erase length', '')
                 self.conf.set(sec, 'erase all', 'false')
@@ -153,10 +160,30 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
                 page.imgPathLine.setText(self.conf.get(sec, 'write file', fallback=''))
                 page.imgAddress.setText(self.conf.get(sec, 'write addr', fallback=''))
                 page.radioPack.setChecked(self.conf.getboolean(sec, 'write pack', fallback=False))
+
+                _wopt = self.conf.get(sec, 'write option', fallback='')
+
+                try:
+                    if _wopt == "Verify":
+                        page.verifyWrite.setChecked(True)
+                    elif _wopt == "Raw":
+                        page.rawWrite.setChecked(True)
+                except:
+                    pass
+
                 page.fileSave.setText(self.conf.get(sec, 'read file', fallback=''))
                 page.readStart.setText(self.conf.get(sec, 'read start', fallback=''))
                 page.readEnd.setText(self.conf.get(sec, 'read length', fallback=''))
                 page.readAll.setChecked(self.conf.getboolean(sec, 'read all', fallback=False))
+
+                _ropt = self.conf.get(sec, 'read option', fallback='')
+
+                try:
+                    if _ropt == "WithBad":
+                        page.readWithBad.setChecked(True)
+                except:
+                    pass
+
                 page.eraseStart.setText(self.conf.get(sec, 'erase start', fallback=''))
                 page.eraseEnd.setText(self.conf.get(sec, 'erase length', fallback=''))
                 page.eraseAll.setChecked(self.conf.getboolean(sec, 'erase all', fallback=False))
@@ -238,6 +265,11 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
             self.conf.set(section, 'read start', startStr)
             self.conf.set(section, 'read length', lengthStr)
 
+            if option == OPT_NONE:
+                self.conf.set(section, 'read option', "None")
+            elif option == OPT_WITHBAD:
+                self.conf.set(section, 'read option', "WithBad")
+
             if isall:
                 self.conf.set(section, 'read all', 'true')
             else:
@@ -304,6 +336,13 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
             section = 'OTP'
             self.conf.set(section, 'write file', image_file_name)
 
+        if option == OPT_NONE:
+            self.conf.set(section, 'write option', "None")
+        elif option == OPT_VERIFY:
+            self.conf.set(section, 'write option', "Verify")
+        elif option == OPT_RAW:
+            self.conf.set(section, 'write option', "Raw")
+
         self.conf.write(open(self.iniFileName, 'w', encoding='utf-8'))
 
         try:
@@ -311,7 +350,7 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
                 print(f'do_otp_program({image_file_name})')
                 do_otp_program(image_file_name)
             elif ispack:
-                print(f'do_otp_program({media}, {image_file_name}, {option})')
+                print(f'do_pack_program({media}, {image_file_name}, {option})')
                 do_pack_program(media, image_file_name, option)
             else:
                 print(f'do_img_program({media}, {start}, {image_file_name}, {option})')
