@@ -23,6 +23,7 @@ from UnpackImage import UnpackImage
 from collections import namedtuple
 from struct import unpack
 import time
+import platform
 # for debug
 import usb.core
 import usb.util
@@ -83,6 +84,8 @@ IMG_DTB = 6
 # devices = []
 mp_mode = False
 
+WINDOWS_PATH = "C:\\Program Files (x86)\\Nuvoton Tools\\NuWriter\\"
+LINUX_PATH = "/usr/share/nuwriter/"
 
 def conv_env(env_file_name, blk_size) -> bytearray:
 
@@ -775,16 +778,43 @@ def __get_info(dev) -> int:
     return 0
 
 
-# def do_attach(ini_file_name, mp_mode=False):
 def do_attach(ini_file_name, mp_mode1=False) -> None:
+    init_location = "missing"
+    if os.path.exists(ini_file_name):  # default use the init file in current directory
+        init_location = ini_file_name
+    else:
+        if platform.system() == 'Windows':
+            if os.path.exists(WINDOWS_PATH + "ddrimg\\" + ini_file_name):
+                init_location = WINDOWS_PATH + "ddrimg\\" + ini_file_name
+        elif platform.system() == 'Linux':
+            if os.path.exists(LINUX_PATH + "ddrimg/" + ini_file_name):
+                init_location = LINUX_PATH + "ddrimg/" + ini_file_name
+
+    if init_location == "missing":
+        print(f"Cannot find {ini_file_name}")
+        sys.exit(3)
     try:
-        with open(ini_file_name, "rb") as ini_file:
+        with open(init_location, "rb") as ini_file:
             ini_data = ini_file.read()
     except (IOError, OSError) as err:
         print(f"Open {ini_file_name} failed")
         sys.exit(err)
+    xusb_location = "missing"
+    if os.path.exists("xusb.bin"):  # default use the xusb.bin in current directory
+        xusb_location = "xusb.bin"
+    else:
+        if platform.system() == 'Windows':
+            if os.path.exists(WINDOWS_PATH + "xusb.bin"):
+                xusb_location = WINDOWS_PATH + "xusb.bin"
+        elif platform.system() == 'Linux':
+            if os.path.exists(LINUX_PATH + "xusb.bin"):
+                xusb_location = LINUX_PATH + "xusb.bin"
+    if xusb_location == "missing":
+        print("Cannot find xusb.bin")
+        sys.exit(3)
+
     try:
-        with open("xusb.bin", "rb") as xusb_file:
+        with open(xusb_location, "rb") as xusb_file:
             xusb_data = xusb_file.read()
     except (IOError, OSError) as err:
         print("Open xusb.bin failed")
@@ -1235,7 +1265,6 @@ def get_type(img_type) -> int:
 
 
 def main():
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument("CONFIG", nargs='?', help="Config file", type=str, default='')
