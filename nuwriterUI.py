@@ -1,7 +1,8 @@
 
+#!/usr/bin/python3
+import sys, os
+
 from PyQt5 import QtWidgets, QtCore, QtGui
-import sys
-import os
 
 # FIXME: without dispose_resources, the ui tool raises an exception.
 # SystemExit: [Errno 13] Access denied (insufficient permissions)
@@ -103,11 +104,21 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
 
         iniFileName = self.iniFileName
 
-        if not os.path.exists(iniFileName):
+        # https://pyinstaller.readthedocs.io/en/stable/runtime-information.html
+        if getattr(sys, 'frozen', False):
+            # we are running in a bundle
+            app_dir = os.path.dirname(os.path.abspath(sys.executable))
+        else:
+            # we are running in a normal Python environment
+            app_dir = os.path.dirname(os.path.abspath(__file__))
+
+        iniFilePath = os.path.join(app_dir, iniFileName)
+
+        if not os.path.exists(iniFilePath):
             open(iniFileName, 'w', encoding='utf-8')
 
         self.conf = configparser.ConfigParser()
-        self.conf.read(iniFileName, encoding='utf-8')
+        self.conf.read(iniFilePath, encoding='utf-8')
 
         section = 'Attach'
 
