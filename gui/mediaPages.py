@@ -55,6 +55,7 @@ class SpiPage(QWidget):
     signalImgProgram = pyqtSignal(int, str, str, int, bool)
     signalImgRead = pyqtSignal(int, str, str, str, int, bool)
     signalImgErase = pyqtSignal(int, str, str, int, bool)
+    signalMscStorage = pyqtSignal(str, int)
 
     def __init__(self, media, parent=None):
         super(SpiPage, self).__init__(parent)
@@ -69,6 +70,9 @@ class SpiPage(QWidget):
         self.addReadArgument()
         self.addEraseArgument()
 
+        if media == DEV_SD_EMMC:
+            self.addStorageArgument()
+
         self.mainLayout.addStretch()
 
         self.setLayout(self.mainLayout)
@@ -78,6 +82,9 @@ class SpiPage(QWidget):
             self.signalImgRead.connect(parent.doImgRead)
             self.signalImgProgram.connect(parent.doImgProgram)
             self.signalImgErase.connect(parent.doImgErase)
+
+            if media == DEV_SD_EMMC:
+                self.signalMscStorage.connect(parent.doMsc)
 
 
     def onRadioToggled(self):
@@ -191,6 +198,28 @@ class SpiPage(QWidget):
         group.setLayout(layout)
         self.mainLayout.addWidget(group)
 
+    def addStorageArgument(self):
+
+        self.reservedSize = QLineEdit('')
+
+        self.optEject = QCheckBox('Eject')
+
+        _optLayout = QHBoxLayout()
+        _optLayout.addWidget(self.optEject)
+        _optLayout.addStretch()
+
+        _storageGroup = QGroupBox("Storage")
+        _storageLayout = QFormLayout()
+
+        _storageLayout.addRow(QLabel("Reserved size"), self.reservedSize)
+        _storageLayout.addRow(QLabel("Option"), _optLayout)
+
+        # _reservedLayout = QHBoxLayout()
+        _storageGroup.setLayout(_storageLayout)
+        self.mainLayout.addWidget(_storageGroup)
+
+        self.optEject.stateChanged.connect(lambda checked: (self.reservedSize.setEnabled(not checked)))
+
 
     def addOptions(self):
         spiButtonLayout = QHBoxLayout()
@@ -207,6 +236,11 @@ class SpiPage(QWidget):
         spiButtonLayout.addWidget(programButton)
         spiButtonLayout.addWidget(readButton)
         spiButtonLayout.addWidget(eraseButton)
+
+        if self._media == DEV_SD_EMMC:
+            storageButton = QPushButton('Storage')
+            storageButton.clicked.connect(self.storageMSC)
+            spiButtonLayout.addWidget(storageButton)
 
         spiButtonGroup = QGroupBox()
         spiButtonGroup.setLayout(spiButtonLayout)
@@ -253,6 +287,17 @@ class SpiPage(QWidget):
         _isall = self.eraseAll.isChecked()
         self.signalImgErase.emit(_media, _start , _end, 0, _isall)
 
+    def storageMSC(self):
+        mscSize = self.reservedSize.text()
+
+        # OPT_EJECT
+        if self.optEject.isChecked():
+            option = 6
+        else:
+            option = 0
+
+        self.signalMscStorage.emit(mscSize , option)
+
 
     def pathBrowse(self):
         filename = ""
@@ -288,7 +333,7 @@ class DdrSramPage(QWidget):
         super(DdrSramPage, self).__init__(parent)
 
         self.imgPathLine = QLineEdit('')
-        self.imgAddress = QLineEdit('1000')
+        self.imgAddress = QLineEdit('')
         self.optExecute = QCheckBox('Execute after download')
 
         imgFileLayout = QHBoxLayout()
@@ -302,7 +347,7 @@ class DdrSramPage(QWidget):
         optionLayout.addWidget(self.optExecute)
         optionLayout.addStretch()
 
-        progGroup = QGroupBox("Parameters")
+        progGroup = QGroupBox("Write")
         progLayout = QFormLayout()
         progLayout.addRow(QLabel("Image file"), imgFileLayout)
         progLayout.addRow(QLabel("Image addr."), self.imgAddress)

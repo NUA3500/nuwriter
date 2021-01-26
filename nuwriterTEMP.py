@@ -23,6 +23,7 @@ from UnpackImage import UnpackImage
 from collections import namedtuple
 from struct import unpack
 import time
+import platform
 # for debug
 import usb.core
 import usb.util
@@ -58,7 +59,8 @@ OPT_EXECUTE = 2     # For write
 OPT_VERIFY = 3      # For write
 OPT_UNPACK = 4      # For pack
 OPT_RAW = 5         # For write
-OPT_EJECT = 6      # For msc
+OPT_EJECT = 6       # For msc
+OPT_STUFF = 7       # For stuff pack
 
 # OPT block definitions
 OPT_OTPBLK1 = 0x100
@@ -83,6 +85,8 @@ IMG_DTB = 6
 # devices = []
 mp_mode = False
 
+WINDOWS_PATH = "C:\\Program Files (x86)\\Nuvoton Tools\\NuWriter\\"
+LINUX_PATH = "/usr/share/nuwriter/"
 
 def conv_env(env_file_name, blk_size) -> bytearray:
 
@@ -538,6 +542,7 @@ def do_pack_program(media, pack_file_name, option=OPT_NONE) -> None:
     if failed > 0:
         print(f"Failed to program {failed} device(s)")
 
+    dispose_resources(devices)
 
 def __img_program(dev, media, start, img_data, option) -> int:
 
@@ -778,16 +783,43 @@ def __get_info(dev) -> int:
     return 0
 
 
-# def do_attach(ini_file_name, mp_mode=False):
 def do_attach(ini_file_name, mp_mode1=False) -> None:
+    init_location = "missing"
+    if os.path.exists(ini_file_name):  # default use the init file in current directory
+        init_location = ini_file_name
+    else:
+        if platform.system() == 'Windows':
+            if os.path.exists(WINDOWS_PATH + "ddrimg\\" + ini_file_name):
+                init_location = WINDOWS_PATH + "ddrimg\\" + ini_file_name
+        elif platform.system() == 'Linux':
+            if os.path.exists(LINUX_PATH + "ddrimg/" + ini_file_name):
+                init_location = LINUX_PATH + "ddrimg/" + ini_file_name
+
+    if init_location == "missing":
+        print(f"Cannot find {ini_file_name}")
+        sys.exit(3)
     try:
-        with open(ini_file_name, "rb") as ini_file:
+        with open(init_location, "rb") as ini_file:
             ini_data = ini_file.read()
     except (IOError, OSError) as err:
         print(f"Open {ini_file_name} failed")
         sys.exit(err)
+    xusb_location = "missing"
+    if os.path.exists("xusb.bin"):  # default use the xusb.bin in current directory
+        xusb_location = "xusb.bin"
+    else:
+        if platform.system() == 'Windows':
+            if os.path.exists(WINDOWS_PATH + "xusb.bin"):
+                xusb_location = WINDOWS_PATH + "xusb.bin"
+        elif platform.system() == 'Linux':
+            if os.path.exists(LINUX_PATH + "xusb.bin"):
+                xusb_location = LINUX_PATH + "xusb.bin"
+    if xusb_location == "missing":
+        print("Cannot find xusb.bin")
+        sys.exit(3)
+
     try:
-        with open("xusb.bin", "rb") as xusb_file:
+        with open(xusb_location, "rb") as xusb_file:
             xusb_data = xusb_file.read()
     except (IOError, OSError) as err:
         print("Open xusb.bin failed")
@@ -872,6 +904,59 @@ def do_unpack(pack_file_name) -> None:
     except (IOError, OSError):
         print("Create symbolic folder unpack failed")
     print("Unpack images to directory {} complete".format(now.strftime("%m%d-%H%M%S%f")))
+
+
+def do_stuff(cfg_file) -> None:
+    now = datetime.now()
+
+    try:
+        with open(cfg_file, "r") as json_file:
+            try:
+                d = json.load(json_file)
+            except json.decoder.JSONDecodeError as err:
+                print(f"{cfg_file} parsing error")
+                sys.exit(err)
+    except (IOError, OSError) as err:
+        print(f"Open {cfg_file} failed")
+        sys.exit(err)
+
+    try:
+        os.mkdir(now.strftime("%m%d-%H%M%S%f"))
+        pack_file = open(now.strftime("%m%d-%H%M%S%f") + "/pack.bin", "wb")
+    except (IOError, OSError) as err:
+        sys.exit(err)
+
+    offset = 0
+    out = bytearray()
+
+    # Start stuffing image
+    for img in d["image"]:
+        try:
+            with open(img["file"], "rb") as img_file:
+                data = img_file.read()
+        except (IOError, OSError) as err:
+            print(f"Open {img_file} failed")
+            shutil.rmtree(now.strftime("%m%d-%H%M%S%f"))
+            sys.exit(err)
+        if int(img["offset"], 0) < offset:
+            print(f"Please place the files in {cfg_file} based on the ascending offset")
+            sys.exit(4)
+        elif int(img["offset"], 0) > offset:
+            out += b'\xFF' * (int(img["offset"], 0) - offset)
+            offset = int(img["offset"], 0)
+        out += data
+        offset += len(data)
+    pack_file.write(out)
+    pack_file.close()
+    try:
+        os.unlink("pack")
+    except (IOError, OSError):
+        pass
+    try:
+        os.symlink(now.strftime("%m%d-%H%M%S%f"), "pack")
+    except (IOError, OSError):
+        print("Create symbolic folder pack failed")
+    print("Generate pack file in directory {} complete".format(now.strftime("%m%d-%H%M%S%f")))
 
 
 def do_pack(cfg_file) -> None:
@@ -1198,6 +1283,7 @@ def do_msc(media, reserve, option=OPT_NONE) -> None:
     if failed > 0:
         print("Failed to {} {} MSC device(s)".format("set" if option == "OPT_NONE" else "eject", failed))
 
+    dispose_resources(devices)
 
 def get_media(media) -> int:
     media = str.upper(media)
@@ -1223,7 +1309,8 @@ def get_option(option) -> int:
         'EXECUTE': OPT_EXECUTE,
         'UNPACK': OPT_UNPACK,
         'RAW': OPT_RAW,
-        'EJECT': OPT_EJECT
+        'EJECT': OPT_EJECT,
+        'STUFF': OPT_STUFF
     }.get(option, OPT_NONE)
 
 
@@ -1245,7 +1332,6 @@ def dispose_resources(devices):
             sys.exit(err)
 
 def main():
-
     parser = argparse.ArgumentParser()
 
     parser.add_argument("CONFIG", nargs='?', help="Config file", type=str, default='')
@@ -1299,6 +1385,8 @@ def main():
         else:
             if option == OPT_UNPACK:
                 do_unpack(cfg_file)
+            elif option == OPT_STUFF:
+                do_stuff(cfg_file)
             else:
                 do_pack(cfg_file)
     elif args.read:

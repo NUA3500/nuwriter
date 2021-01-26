@@ -14,7 +14,7 @@ from nuwriterTEMP import (DEV_DDR_SRAM, DEV_NAND, DEV_OTP, DEV_SD_EMMC,
         OPT_NONE, OPT_SCRUB, OPT_WITHBAD, OPT_EXECUTE, OPT_VERIFY,
         OPT_UNPACK, OPT_RAW, OPT_EJECT,
         do_attach, do_img_erase, do_img_program, do_img_read, do_otp_program,
-        do_pack_program)
+        do_pack_program, do_msc)
 
 class EmittingStream(QtCore.QObject):
 
@@ -120,6 +120,8 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
         self.conf = configparser.ConfigParser()
         self.conf.read(iniFilePath, encoding='utf-8')
 
+        self.iniFilePath = iniFilePath
+
         section = 'Attach'
 
         if not self.conf.has_section(section):
@@ -167,6 +169,11 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
                 self.conf.set(sec, 'erase start', '')
                 self.conf.set(sec, 'erase length', '')
                 self.conf.set(sec, 'erase all', 'false')
+
+                if sec == 'SD':
+                    self.conf.set(section, 'storage size', '')
+                    self.conf.set(section, 'storage option', 'None')
+
             else:
                 page.imgPathLine.setText(self.conf.get(sec, 'write file', fallback=''))
                 page.imgAddress.setText(self.conf.get(sec, 'write addr', fallback=''))
@@ -199,9 +206,20 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
                 page.eraseEnd.setText(self.conf.get(sec, 'erase length', fallback=''))
                 page.eraseAll.setChecked(self.conf.getboolean(sec, 'erase all', fallback=False))
 
-    def closeEvent(self, evt):
-        # self.conf.write(open(self.iniFileName, 'w', encoding='utf-8'))
-        pass
+                _sopt = self.conf.get(sec, 'storage option', fallback='')
+                _size = self.conf.get(sec, 'storage size', fallback='')
+
+                try:
+                    if _sopt == "Eject":
+                        page.optEject.setChecked(True)
+
+                    page.reservedSize.setText(_size)
+                except:
+                    pass
+
+
+    # def closeEvent(self, evt):
+    #     pass
 
     def normalOutputWritten(self, text):
         """Append text to the QTextEdit."""
@@ -223,7 +241,7 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
     def doAttach(self):
         iniFile = self.ddrFileLineEdit.text()
         self.conf.set('Attach', 'Ini File', iniFile)
-        self.conf.write(open(self.iniFileName, 'w', encoding='utf-8'))
+        self.conf.write(open(self.iniFilePath, 'w', encoding='utf-8'))
 
         self.text_browser.clear()
         print(f'do_attach({iniFile})')
@@ -286,7 +304,7 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 self.conf.set(section, 'read all', 'false')
 
-        self.conf.write(open(self.iniFileName, 'w', encoding='utf-8'))
+        self.conf.write(open(self.iniFilePath, 'w', encoding='utf-8'))
 
         try:
             print(f'do_img_read({media}, {start}, {fileStr}, {length}, {option})')
@@ -354,7 +372,7 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
         elif option == OPT_RAW:
             self.conf.set(section, 'write option', "Raw")
 
-        self.conf.write(open(self.iniFileName, 'w', encoding='utf-8'))
+        self.conf.write(open(self.iniFilePath, 'w', encoding='utf-8'))
 
         try:
             if media == DEV_OTP:
@@ -416,11 +434,47 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
             else:
                 self.conf.set(section, 'erase all', 'false')
 
-        self.conf.write(open(self.iniFileName, 'w', encoding='utf-8'))
+        self.conf.write(open(self.iniFilePath, 'w', encoding='utf-8'))
 
         try:
             print(f'do_img_erase({media}, {start}, {length}, {option})')
             do_img_erase(media, start, length, option)
+        except SystemExit as e:
+            print(f'SystemExit: {e}')
+            pass
+        except Exception as e:
+            print(f'An Error occurred: {e}')
+            pass
+        except:
+            print('except')
+            pass
+
+    @QtCore.pyqtSlot(str, int)
+    def doMsc(self, reserveStr, option):
+
+        try:
+            reserve = int(reserveStr, 0) & 0xffffffff
+        except:
+            reserve = 0
+
+        self.text_browser.clear()
+
+        section = 'SD'
+
+        if option == OPT_EJECT:
+            self.conf.set(section, 'storage option', "Eject")
+            reserve = 0
+        else:
+            self.conf.set(section, 'storage option', "None")
+            self.conf.set(section, 'storage size', reserveStr)
+
+
+        self.conf.write(open(self.iniFilePath, 'w', encoding='utf-8'))
+
+        try:
+            media = DEV_SD_EMMC
+            print(f'do_msc({media}, {reserve}, {option})')
+            do_msc(media, reserve, option)
         except SystemExit as e:
             print(f'SystemExit: {e}')
             pass
