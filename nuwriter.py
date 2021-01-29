@@ -2,7 +2,7 @@
 # NOTE: This script is test under Python 3.x
 
 __copyright__ = "Copyright (C) 2020~2021 Nuvoton Technology Corp. All rights reserved"
-__version__ = "v0.35"
+__version__ = "v0.36"
 
 import os
 import sys
@@ -1387,7 +1387,7 @@ def main():
         media = get_media(args.read[0])
 
         try:
-            if media in [DEV_DDR_SRAM, DEV_OTP, DEV_UNKNOWN]:
+            if media in [DEV_OTP, DEV_UNKNOWN]:
                 raise ValueError(f"Cannot support read {str.upper(args.read[0])}")
             if arg_count == 3 and str.upper(args.read[1]) != 'ALL':
                 raise ValueError("Unknown arguments")
