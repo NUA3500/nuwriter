@@ -31,26 +31,8 @@ OPT_UNPACK = 4      # For pack
 OPT_RAW = 5         # For write
 OPT_EJECT = 6      # For msc
 
-# class SdEmmcPage(QWidget):
-#     def __init__(self, media, parent=None):
-#         super(SdEmmcPage, self).__init__(parent)
 
-#         self._media = media
-
-
-#         self.mainLayout = QVBoxLayout()
-
-#         self.addWriteArgument()
-#         self.addReadArgument()
-#         self.addEraseArgument()
-
-#         self.mainLayout.addStretch()
-
-#         self.setLayout(self.mainLayout)
-#         self.addOptions()
-
-
-class SpiPage(QWidget):
+class MediaPage(QWidget):
 
     signalImgProgram = pyqtSignal(int, str, str, int, bool)
     signalImgRead = pyqtSignal(int, str, str, str, int, bool)
@@ -58,34 +40,36 @@ class SpiPage(QWidget):
     signalMscStorage = pyqtSignal(str, int)
 
     def __init__(self, media, parent=None):
-        super(SpiPage, self).__init__(parent)
+        super(MediaPage, self).__init__(parent)
 
         self.parent = parent
         self._media = media
 
 
         self.mainLayout = QVBoxLayout()
+        self.buttonLayout = QHBoxLayout()
 
         self.addWriteArgument()
         self.addReadArgument()
-        self.addEraseArgument()
+
+        if media != DEV_DDR_SRAM:
+            self.addEraseArgument()
 
         if media == DEV_SD_EMMC:
             self.addStorageArgument()
 
         self.mainLayout.addStretch()
+        buttonGroup = QGroupBox('')
+        buttonGroup.setLayout(self.buttonLayout)
+        self.mainLayout.addWidget(buttonGroup)
 
         self.setLayout(self.mainLayout)
-        self.addOptions()
 
         if parent != None:
             self.signalImgRead.connect(parent.doImgRead)
             self.signalImgProgram.connect(parent.doImgProgram)
             self.signalImgErase.connect(parent.doImgErase)
-
-            if media == DEV_SD_EMMC:
-                self.signalMscStorage.connect(parent.doMsc)
-
+            self.signalMscStorage.connect(parent.doMsc)
 
     def onRadioToggled(self):
 
@@ -95,6 +79,10 @@ class SpiPage(QWidget):
             self.imgAddress.setEnabled(True)
 
     def addWriteArgument(self):
+
+        writeGroup = QGroupBox("Write")
+        writeLayout = QFormLayout()
+
         imgBrowseButton = QPushButton('Browse')
         imgBrowseButton.clicked.connect(self.pathBrowse)
 
@@ -104,24 +92,25 @@ class SpiPage(QWidget):
         imgFileLayout.addWidget(self.imgPathLine)
         imgFileLayout.addWidget(imgBrowseButton)
 
-        self.radioData = QRadioButton("Data")
-        self.radioPack = QRadioButton("Pack")
+        writeLayout.addRow(QLabel("Image file"), imgFileLayout)
 
-        self.radioPack.toggled.connect(self.onRadioToggled)
-        self.radioPack.toggled.connect(self.onRadioToggled)
+        if self._media != DEV_DDR_SRAM:
+            self.radioData = QRadioButton("Data")
+            self.radioPack = QRadioButton("Pack")
 
-        imgTypeLayout = QHBoxLayout()
-        imgTypeLayout.addWidget(self.radioData)
-        imgTypeLayout.addWidget(self.radioPack)
-        imgTypeLayout.addStretch()
+            self.radioPack.toggled.connect(self.onRadioToggled)
+            self.radioPack.toggled.connect(self.onRadioToggled)
+
+            imgTypeLayout = QHBoxLayout()
+            imgTypeLayout.addWidget(self.radioData)
+            imgTypeLayout.addWidget(self.radioPack)
+            imgTypeLayout.addStretch()
+
+            writeLayout.addRow(QLabel("Image type"), imgTypeLayout)
 
         self.imgAddress = QLineEdit('')
 
-        spiGroup = QGroupBox("Write")
-        spiLayout = QFormLayout()
-        spiLayout.addRow(QLabel("Image file"), imgFileLayout)
-        spiLayout.addRow(QLabel("Image type"), imgTypeLayout)
-        spiLayout.addRow(QLabel("Image addr."), self.imgAddress)
+        writeLayout.addRow(QLabel("Image addr."), self.imgAddress)
 
         # if option == OPT_RAW and media != DEV_NAND:
         #     raise ValueError(f"Do not support raw write on {str.upper(args.write[0])}")
@@ -135,13 +124,21 @@ class SpiPage(QWidget):
             _optLayout.addWidget(self.rawWrite)
             _optLayout.addWidget(self.verifyWrite)
             _optLayout.addStretch()
-            spiLayout.addRow(QLabel("Option"), _optLayout)
+            writeLayout.addRow(QLabel("Option"), _optLayout)
+        elif self._media == DEV_DDR_SRAM:
+            self.optExecute = QCheckBox('Execute after download')
+            writeLayout.addRow(QLabel("Option"), self.optExecute)
         else:
             self.verifyWrite = QCheckBox('Verify')
-            spiLayout.addRow(QLabel("Option"), self.verifyWrite)
+            writeLayout.addRow(QLabel("Option"), self.verifyWrite)
 
-        spiGroup.setLayout(spiLayout)
-        self.mainLayout.addWidget(spiGroup)
+        writeGroup.setLayout(writeLayout)
+        self.mainLayout.addWidget(writeGroup)
+
+        # Write Button
+        writeButton = QPushButton('Write')
+        writeButton.clicked.connect(self.writeMedia)
+        self.buttonLayout.addWidget(writeButton)
 
     def addReadArgument(self):
         group = QGroupBox("Read")
@@ -177,6 +174,11 @@ class SpiPage(QWidget):
         group.setLayout(layout)
         self.mainLayout.addWidget(group)
 
+        # Read Button
+        readButton = QPushButton('Read')
+        readButton.clicked.connect(self.readMedia)
+        self.buttonLayout.addWidget(readButton)
+
     def addEraseArgument(self):
         group = QGroupBox("Erase")
         layout = QFormLayout()
@@ -197,6 +199,11 @@ class SpiPage(QWidget):
 
         group.setLayout(layout)
         self.mainLayout.addWidget(group)
+
+        # Erase Button
+        eraseButton = QPushButton('Erase')
+        eraseButton.clicked.connect(self.eraseMedia)
+        self.buttonLayout.addWidget(eraseButton)
 
     def addStorageArgument(self):
 
@@ -220,49 +227,35 @@ class SpiPage(QWidget):
 
         self.optEject.stateChanged.connect(lambda checked: (self.reservedSize.setEnabled(not checked)))
 
-
-    def addOptions(self):
-        spiButtonLayout = QHBoxLayout()
-
-        programButton = QPushButton('Write')
-        programButton.clicked.connect(self.writeMedia)
-
-        readButton = QPushButton('Read')
-        readButton.clicked.connect(self.readMedia)
-
-        eraseButton = QPushButton('Erase')
-        eraseButton.clicked.connect(self.eraseMedia)
-
-        spiButtonLayout.addWidget(programButton)
-        spiButtonLayout.addWidget(readButton)
-        spiButtonLayout.addWidget(eraseButton)
-
-        if self._media == DEV_SD_EMMC:
-            storageButton = QPushButton('Storage')
-            storageButton.clicked.connect(self.storageMSC)
-            spiButtonLayout.addWidget(storageButton)
-
-        spiButtonGroup = QGroupBox()
-        spiButtonGroup.setLayout(spiButtonLayout)
-
-        self.mainLayout.addWidget(spiButtonGroup)
+        # Storage Button
+        storageButton = QPushButton('Storage')
+        storageButton.clicked.connect(self.storageMSC)
+        self.buttonLayout.addWidget(storageButton)
 
     def writeMedia(self):
         _file = self.imgPathLine.text()
         _address = self.imgAddress.text()
         _media = self._media
-        _ispack = self.radioPack.isChecked()
+
+        try:
+            _ispack = self.radioPack.isChecked()
+        except:
+            _ispack = False
 
         _option = OPT_NONE
 
-        if _media == DEV_NAND:
-            if self.normalWrite.isChecked():
-                _option = OPT_NONE
-            elif self.rawWrite.isChecked():
-                _option = OPT_RAW
+        if _media == DEV_DDR_SRAM:
+            if self.optExecute.isChecked():
+                _option = 2 # OPT_EXECUTE
+        else:
+            if _media == DEV_NAND:
+                if self.normalWrite.isChecked():
+                    _option = OPT_NONE
+                elif self.rawWrite.isChecked():
+                    _option = OPT_RAW
 
-        if self.verifyWrite.isChecked():
-            _option = OPT_VERIFY
+            if self.verifyWrite.isChecked():
+                _option = OPT_VERIFY
 
         self.signalImgProgram.emit(_media, _address , _file, _option, _ispack)
 
@@ -307,14 +300,6 @@ class SpiPage(QWidget):
         if filename != "":
             self.imgPathLine.setText(filename)
 
-        # if filename != "" and filename[-4:] in (".bin"):
-        #     self.imgPathLine.setText(filename)
-        # elif filename != "":
-        #     msgBox = QtWidgets.QMessageBox()
-        #     msgBox.setText("Wrong file extention. Must be .bin.")
-        #     msgBox.exec_()
-        # pass
-
     def saveFile(self):
         fileName, _ = QtWidgets.QFileDialog.getSaveFileName(self,
                                     "save file",
@@ -324,118 +309,3 @@ class SpiPage(QWidget):
         if fileName != "":
             self.fileSave.setText(fileName)
             return
-
-class DdrSramPage(QWidget):
-
-    signalImgProgram = pyqtSignal(int, str, str, int, bool)
-
-    def __init__(self, parent=None):
-        super(DdrSramPage, self).__init__(parent)
-
-        self.imgPathLine = QLineEdit('')
-        self.imgAddress = QLineEdit('')
-        self.optExecute = QCheckBox('Execute after download')
-
-        imgFileLayout = QHBoxLayout()
-        imgFileLayout.addWidget(self.imgPathLine)
-        # imgFileLayout.addWidget(QPushButton('Browse'))
-        imgBrowseButton = QPushButton('Browse')
-        imgBrowseButton.clicked.connect(self.pathBrowse)
-        imgFileLayout.addWidget(imgBrowseButton)
-
-        optionLayout = QHBoxLayout()
-        optionLayout.addWidget(self.optExecute)
-        optionLayout.addStretch()
-
-        progGroup = QGroupBox("Write")
-        progLayout = QFormLayout()
-        progLayout.addRow(QLabel("Image file"), imgFileLayout)
-        progLayout.addRow(QLabel("Image addr."), self.imgAddress)
-
-        progLayout.addRow(QLabel("Option"), optionLayout)
-
-        progGroup.setLayout(progLayout)
-
-        self.mainLayout = QVBoxLayout()
-        self.mainLayout.addWidget(progGroup)
-        self.mainLayout.addStretch()
-
-        self.setLayout(self.mainLayout)
-        self.addOptions()
-
-    def pathBrowse(self):
-        filename = ""
-        # Fix for crash in X on Ubuntu 14.04
-        filename, _ = QtWidgets.QFileDialog.getOpenFileName()
-        if filename != "":
-            self.imgPathLine.setText(filename)
-        pass
-
-    def addOptions(self):
-        optionLayout = QHBoxLayout()
-
-        programButton = QPushButton('Write')
-        programButton.clicked.connect(self.writeDDR)
-
-        # optionLayout.addStretch()
-        optionLayout.addWidget(programButton)
-        # optionLayout.addStretch()
-
-        optionGroup = QGroupBox()
-        optionGroup.setLayout(optionLayout)
-
-        self.mainLayout.addWidget(optionGroup)
-
-    def writeDDR(self):
-        imgFile = self.imgPathLine.text()
-        # With the 0x prefix, Python can distinguish hex and decimal automatically.
-        # imgAddr = int(self.imgAddress.text(),0)
-        imgAddr = self.imgAddress.text()
-
-        # Command options
-        # OPT_NONE = 0
-        # OPT_EXECUTE = 2     # For write
-        if self.optExecute.isChecked():
-            option = 2
-        else:
-            option = 0
-
-        # DEV_DDR_SRAM = 0
-        media = 0
-        self.signalImgProgram.emit(media, imgAddr , imgFile, option, False)
-
-if __name__ == "__main__":
-    class MainDialog(QDialog):
-        def __init__(self, parent=None):
-            super(MainDialog, self).__init__(parent)
-            self.tabMedia = QTabWidget()
-
-            # DDR/SRAM
-            self.ddrPage = DdrSramPage()
-            self.ddrPage.signalImgProgram.connect(self.doImgProgram)
-            self.tabMedia.addTab(self.ddrPage, "DDR/SRAM")
-
-            # NAND
-            self.nandPage = SpiPage(DEV_NAND)
-            self.tabMedia.addTab(self.nandPage, "NAND")
-            self.nandPage.signalImgProgram.connect(self.doImgProgram)
-            self.tabMedia.setCurrentIndex(1)
-
-
-            mainLayout = QVBoxLayout()
-            mainLayout.setContentsMargins(5, 5, 5, 5)
-            # addWidget
-            mainLayout.addWidget(self.tabMedia)
-            self.setLayout(mainLayout)
-            self.setWindowTitle("MA35D1 NuWriter")
-
-        @QtCore.pyqtSlot(int, str, str, int, bool)
-        def doImgProgram(self, media, start, image_file_name, option, ispack):
-            print(f"slot doImgProgram {media}, {start}, {image_file_name}, {option}, {ispack}")
-
-    import sys
-
-    app = QtWidgets.QApplication(sys.argv)
-    myapp = MainDialog()
-    myapp.show()
-    sys.exit(app.exec_())

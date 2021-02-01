@@ -24,7 +24,7 @@ class EmittingStream(QtCore.QObject):
         self.textWritten.emit(str(text))
 
 from mainwindow import Ui_MainWindow
-from gui.mediaPages import DdrSramPage, SpiPage
+from gui.mediaPages import MediaPage
 
 try:
     # Include in try/except block if you're also targeting Mac/Linux
@@ -66,24 +66,23 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
     def addMedia(self):
 
         # DEV_DDR_SRAM = 0
-        self.ddrPage = DdrSramPage()
+        self.ddrPage = MediaPage(DEV_DDR_SRAM, self)
         self.tabMedia.addTab(self.ddrPage, "DDR/SRAM")
-        self.ddrPage.signalImgProgram.connect(self.doImgProgram)
 
         # DEV_NAND = 1
-        self.nandPage = SpiPage(DEV_NAND, self)
+        self.nandPage = MediaPage(DEV_NAND, self)
         self.tabMedia.addTab(self.nandPage, "NAND")
 
         # DEV_SD_EMMC = 2
-        self.sdEmmcPage = SpiPage(DEV_SD_EMMC, self)
+        self.sdEmmcPage = MediaPage(DEV_SD_EMMC, self)
         self.tabMedia.addTab(self.sdEmmcPage, "SD/EMMC")
 
         # DEV_SPINOR = 3
-        self.spiNorPage = SpiPage(DEV_SPINOR, self)
+        self.spiNorPage = MediaPage(DEV_SPINOR, self)
         self.tabMedia.addTab(self.spiNorPage, "SPI NOR")
 
         # DEV_SPINAND = 4
-        self.spiNandPage = SpiPage(DEV_SPINAND, self)
+        self.spiNandPage = MediaPage(DEV_SPINAND, self)
         self.tabMedia.addTab(self.spiNandPage, "SPI NAND")
 
         # DEV_OTP = 6
@@ -115,108 +114,92 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
         iniFilePath = os.path.join(app_dir, iniFileName)
 
         if not os.path.exists(iniFilePath):
-            open(iniFileName, 'w', encoding='utf-8')
+            open(iniFilePath, 'w', encoding='utf-8')
 
         self.conf = configparser.ConfigParser()
         self.conf.read(iniFilePath, encoding='utf-8')
 
         self.iniFilePath = iniFilePath
 
-        section = 'Attach'
+        if not self.conf.has_section('Attach'):
+            self.conf.add_section('Attach')
 
-        if not self.conf.has_section(section):
-            self.conf.add_section(section)
-            self.conf.set(section, 'Ini File', '')
-        else:
-            self.ddrFileLineEdit.setText(self.conf.get(section, 'Ini File', fallback=''))
+        self.ddrFileLineEdit.setText(self.conf.get('Attach', 'Ini File', fallback=''))
 
-        section = 'DDR'
+        sections = ['DDR', 'NAND', 'SD', 'SPINOR', 'SPINAND', 'OTP', 'USBH']
 
-        if not self.conf.has_section(section):
-            self.conf.add_section(section)
-            self.conf.set(section, 'write file', '')
-            self.conf.set(section, 'write addr', '')
-            self.conf.set(section, 'write execute', 'false')
-        else:
-            self.ddrPage.imgPathLine.setText(self.conf.get(section, 'write file', fallback=''))
-            self.ddrPage.imgAddress.setText(self.conf.get(section, 'write addr', fallback=''))
-            self.ddrPage.optExecute.setChecked(self.conf.getboolean(section, 'write execute', fallback=False))
+        for section in sections:
+            if not self.conf.has_section(section):
+                self.conf.add_section(section)
 
-
-        sections = ['NAND', 'SPINOR', 'SPINAND', 'SD']
-
-        for sec in sections:
-            if sec == 'NAND':
+            if section == 'DDR':
+                page = self.ddrPage
+            elif section == 'NAND':
                 page = self.nandPage
-            elif sec == 'SPINOR':
-                page = self.spiNorPage
-            elif sec == 'SPINAND':
-                page = self.spiNandPage
-            elif sec == 'SD':
+            elif section == 'SD':
                 page = self.sdEmmcPage
-
-            if not self.conf.has_section(sec):
-                self.conf.add_section(sec)
-                self.conf.set(sec, 'write file', '')
-                self.conf.set(sec, 'write addr', '')
-                self.conf.set(sec, 'write pack', 'false')
-                self.conf.set(sec, 'write option', '')
-                self.conf.set(sec, 'read file', '')
-                self.conf.set(sec, 'read start', '')
-                self.conf.set(sec, 'read length', '')
-                self.conf.set(sec, 'read all', 'false')
-                self.conf.set(sec, 'read option', '')
-                self.conf.set(sec, 'erase start', '')
-                self.conf.set(sec, 'erase length', '')
-                self.conf.set(sec, 'erase all', 'false')
-
-                if sec == 'SD':
-                    self.conf.set(section, 'storage size', '')
-                    self.conf.set(section, 'storage option', 'None')
-
+            elif section == 'SPINOR':
+                page = self.spiNorPage
+            elif section == 'SPINAND':
+                page = self.spiNandPage
             else:
-                page.imgPathLine.setText(self.conf.get(sec, 'write file', fallback=''))
-                page.imgAddress.setText(self.conf.get(sec, 'write addr', fallback=''))
-                page.radioPack.setChecked(self.conf.getboolean(sec, 'write pack', fallback=False))
+                # print(f'{section} is not supported yet')
+                continue
 
-                _wopt = self.conf.get(sec, 'write option', fallback='')
+            page.imgPathLine.setText(self.conf.get(section, 'write file', fallback=''))
+            page.imgAddress.setText(self.conf.get(section, 'write addr', fallback=''))
 
-                try:
-                    if _wopt == "Verify":
-                        page.verifyWrite.setChecked(True)
-                    elif _wopt == "Raw":
-                        page.rawWrite.setChecked(True)
-                except:
-                    pass
+            try:
+                page.radioPack.setChecked(self.conf.getboolean(section, 'write pack', fallback=False))
+            except:
 
-                page.fileSave.setText(self.conf.get(sec, 'read file', fallback=''))
-                page.readStart.setText(self.conf.get(sec, 'read start', fallback=''))
-                page.readEnd.setText(self.conf.get(sec, 'read length', fallback=''))
-                page.readAll.setChecked(self.conf.getboolean(sec, 'read all', fallback=False))
+                if section != 'DDR':
+                    print(f'fail to set pack in {section}')
 
-                _ropt = self.conf.get(sec, 'read option', fallback='')
+                pass
 
-                try:
-                    if _ropt == "WithBad":
-                        page.readWithBad.setChecked(True)
-                except:
-                    pass
+            option = self.conf.get(section, 'write option', fallback='')
 
-                page.eraseStart.setText(self.conf.get(sec, 'erase start', fallback=''))
-                page.eraseEnd.setText(self.conf.get(sec, 'erase length', fallback=''))
-                page.eraseAll.setChecked(self.conf.getboolean(sec, 'erase all', fallback=False))
+            try:
+                if option == "Verify":
+                    page.verifyWrite.setChecked(True)
+                elif option == "Raw":
+                    page.rawWrite.setChecked(True)
+                elif option == "Execute":
+                    page.optExecute.setChecked(True)
+                elif option != '' and option != 'None':
+                    print(f'unknown optioin {option}')
+            except:
+                print(f'fail to set optioin {option} in {section}')
+                pass
 
-                _sopt = self.conf.get(sec, 'storage option', fallback='')
-                _size = self.conf.get(sec, 'storage size', fallback='')
+            page.fileSave.setText(self.conf.get(section, 'read file', fallback=''))
+            page.readStart.setText(self.conf.get(section, 'read start', fallback=''))
+            page.readEnd.setText(self.conf.get(section, 'read length', fallback=''))
 
-                try:
-                    if _sopt == "Eject":
-                        page.optEject.setChecked(True)
+            option = self.conf.get(section, 'read option', fallback='')
 
-                    page.reservedSize.setText(_size)
-                except:
-                    pass
+            try:
+                if option == "WithBad":
+                    page.readWithBad.setChecked(True)
+                elif option != '' and option != 'None':
+                    print(f'unknown optioin {option}')
+            except:
+                print(f'fail to set optioin {option} in {section}')
+                pass
 
+            if section == 'DDR':
+                continue
+
+            page.eraseStart.setText(self.conf.get(section, 'erase start', fallback=''))
+            page.eraseEnd.setText(self.conf.get(section, 'erase length', fallback=''))
+            page.eraseAll.setChecked(self.conf.getboolean(section, 'erase all', fallback=False))
+
+            if section != 'SD':
+                continue
+
+            page.reservedSize.setText(self.conf.get(section, 'storage size', fallback=''))
+            page.optEject.setChecked(self.conf.get(section, 'storage option', fallback='') == 'Eject')
 
     # def closeEvent(self, evt):
     #     pass
@@ -279,9 +262,11 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
 
         self.text_browser.clear()
 
-        if media in [DEV_NAND, DEV_SPINOR, DEV_SPINAND, DEV_SD_EMMC]:
+        if media in [DEV_DDR_SRAM, DEV_NAND, DEV_SPINOR, DEV_SPINAND, DEV_SD_EMMC]:
 
-            if media == DEV_NAND:
+            if media == DEV_DDR_SRAM:
+                section = 'DDR'
+            elif media == DEV_NAND:
                 section = 'NAND'
             elif media == DEV_SPINOR:
                 section = 'SPINOR'
@@ -338,9 +323,9 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
             self.conf.set(section, 'write file', image_file_name)
             self.conf.set(section, 'write addr', startStr)
             if option == 0:
-                self.conf.set(section, 'write execute', 'false')
+                self.conf.set(section, 'write option', "None")
             elif option == 2:
-                self.conf.set(section, 'write execute', 'true')
+                self.conf.set(section, 'write option', "Execute")
 
         elif media in [DEV_NAND, DEV_SPINOR, DEV_SPINAND, DEV_SD_EMMC]:
 
