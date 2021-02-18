@@ -166,7 +166,7 @@ def conv_otp(opt_file_name) -> (bytearray, int):
                     if d['boot_cfg']['posotp'] == 'enable':
                         cfg_val |= 1
                 if sub_key == 'qspiclk':
-                    if d['boot_cfg']['qspiclk'] == '50mhz':
+                    if d['boot_cfg']['qspiclk'] == '60mhz':
                         cfg_val |= 2
                 if sub_key == 'wdt0en':
                     if d['boot_cfg']['wdt0en'] == 'enable':
@@ -203,7 +203,7 @@ def conv_otp(opt_file_name) -> (bytearray, int):
                         cfg_val |= 0x4000
                     elif d['boot_cfg']['option'] == 't24' or d['boot_cfg']['option'] == 'spinor1':
                         cfg_val |= 0x8000
-                    elif d['boot_cfg']['option'] == 'noecc' or d['boot_cfg']['option'] == 'spinor4':
+                    elif d['boot_cfg']['option'] == 'ignore' or d['boot_cfg']['option'] == 'spinor4':
                         cfg_val |= 0xC000
                 if sub_key == 'secboot':
                     if d['boot_cfg']['secboot'] == 'disable':
