@@ -39,7 +39,7 @@ import configparser
 class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
     def __init__(self):
         QtWidgets.QMainWindow.__init__(self) # Call the inherited classes __init__ method
-        # uic.loadUi('gui/ui/NUA3500-Writer.ui', self) # Load the .ui file
+        # uic.loadUi('gui/ui/MA35D1-Writer.ui', self) # Load the .ui file
 
         self.setupUi(self)
 

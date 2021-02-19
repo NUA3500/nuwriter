@@ -1335,7 +1335,7 @@ def main():
     parser = argparse.ArgumentParser()
 
     parser.add_argument("CONFIG", nargs='?', help="Config file", type=str, default='')
-    parser.add_argument("-a", "--attach", action='store_true', help="Attach to NUA3500")
+    parser.add_argument("-a", "--attach", action='store_true', help="Attach to MA35D1")
     parser.add_argument("-o", "--option", nargs='+', help="Option flag")
     parser.add_argument("-t", "--type", nargs='+', help="Type flag")
     group = parser.add_mutually_exclusive_group()
