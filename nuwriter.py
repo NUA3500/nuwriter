@@ -1450,8 +1450,8 @@ def main():
         media = get_media(args.erase[0])
 
         try:
-            if media in [DEV_DDR_SRAM, DEV_OTP, DEV_UNKNOWN]:
-                raise ValueError(f"Unknown storage media {str.upper(args.erase[0])}")
+            if media in [DEV_DDR_SRAM, DEV_OTP, DEV_SD_EMMC, DEV_UNKNOWN]:
+                raise ValueError(f"{str.upper(args.erase[0])} does not support erase")
             if arg_count == 2 and str.upper(args.erase[1]) != 'ALL':
                 raise ValueError("Unknown arguments")
         except ValueError as err:
