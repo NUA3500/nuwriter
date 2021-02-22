@@ -194,15 +194,13 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
             if section == 'DDR':
                 continue
 
-            page.eraseStart.setText(self.conf.get(section, 'erase start', fallback=''))
-            page.eraseEnd.setText(self.conf.get(section, 'erase length', fallback=''))
-            page.eraseAll.setChecked(self.conf.getboolean(section, 'erase all', fallback=False))
-
-            if section != 'SD':
-                continue
-
-            page.reservedSize.setText(self.conf.get(section, 'storage size', fallback=''))
-            page.optEject.setChecked(self.conf.get(section, 'storage option', fallback='') == 'Eject')
+            if section == 'SD':
+                page.reservedSize.setText(self.conf.get(section, 'storage size', fallback=''))
+                page.optEject.setChecked(self.conf.get(section, 'storage option', fallback='') == 'Eject')
+            else:
+                page.eraseStart.setText(self.conf.get(section, 'erase start', fallback=''))
+                page.eraseEnd.setText(self.conf.get(section, 'erase length', fallback=''))
+                page.eraseAll.setChecked(self.conf.getboolean(section, 'erase all', fallback=False))
 
     # def closeEvent(self, evt):
     #     pass

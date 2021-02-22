@@ -166,7 +166,7 @@ def conv_otp(opt_file_name) -> (bytearray, int):
                     if d['boot_cfg']['posotp'] == 'enable':
                         cfg_val |= 1
                 if sub_key == 'qspiclk':
-                    if d['boot_cfg']['qspiclk'] == '50mhz':
+                    if d['boot_cfg']['qspiclk'] == '60mhz':
                         cfg_val |= 2
                 if sub_key == 'wdt0en':
                     if d['boot_cfg']['wdt0en'] == 'enable':
@@ -203,7 +203,7 @@ def conv_otp(opt_file_name) -> (bytearray, int):
                         cfg_val |= 0x4000
                     elif d['boot_cfg']['option'] == 't24' or d['boot_cfg']['option'] == 'spinor1':
                         cfg_val |= 0x8000
-                    elif d['boot_cfg']['option'] == 'noecc' or d['boot_cfg']['option'] == 'spinor4':
+                    elif d['boot_cfg']['option'] == 'ignore' or d['boot_cfg']['option'] == 'spinor4':
                         cfg_val |= 0xC000
                 if sub_key == 'secboot':
                     if d['boot_cfg']['secboot'] == 'disable':
@@ -676,7 +676,16 @@ def do_img_read(media, start, out_file_name, length=0x1, option=OPT_NONE) -> Non
     remain = length
 
     while True:
-        ack = dev.read(4)
+
+        # FIXME: SPI NAND, Read Command
+        try:
+            ack = dev.read(4)
+        except SystemExit as e:
+            if remain == 0:
+                break
+            else:
+                sys.exit(e)
+
         # Get the transfer length of next read
         xfer_size = int.from_bytes(ack, byteorder="little")
         if xfer_size == 0:
@@ -1331,185 +1340,6 @@ def dispose_resources(devices):
         except usb.core.USBError as err:
             sys.exit(err)
 
-def main():
-    parser = argparse.ArgumentParser()
-
-    parser.add_argument("CONFIG", nargs='?', help="Config file", type=str, default='')
-    parser.add_argument("-a", "--attach", action='store_true', help="Attach to MA35D1")
-    parser.add_argument("-o", "--option", nargs='+', help="Option flag")
-    parser.add_argument("-t", "--type", nargs='+', help="Type flag")
-    group = parser.add_mutually_exclusive_group()
-    group.add_argument("-c", "--convert", action='store_true', help="Convert images")
-    group.add_argument("-p", "--pack", action='store_true', help="Generate pack file")
-    group.add_argument("-v", "--version", action='store_true', help="Show version number")
-    group.add_argument("-r", "--read", nargs='+', help="Read flash")
-    group.add_argument("-w", "--write", nargs='+', help="Write flash")
-    group.add_argument("-e", "--erase", nargs='+', help="Erase flash")
-    group.add_argument("-s", "--storage", nargs='+', help="Export eMMC/SD as Mass Storage Class")
-
-    if len(sys.argv) == 1:
-        parser.print_help()
-        sys.exit(0)
-
-    args = parser.parse_args()
-
-    if args.option:
-        option = get_option(args.option[0])
-    else:
-        option = OPT_NONE
-
-    # if args.type:
-    #     img_type = get_type(args.type[0])
-    # else:
-    #     img_type = IMG_DATA
-
-    cfg_file = args.CONFIG
-
-    if args.attach:
-        if not cfg_file:
-            print("Please assign a DDR ini file")
-            sys.exit(0)
-        # do_attach(cfg_file, mp_mode=False)
-        do_attach(cfg_file, mp_mode1=False)
-
-    if args.convert:
-        if cfg_file == '':
-            print("No config file assigned")
-            sys.exit(0)
-        else:
-            do_convert(cfg_file)
-    elif args.pack:
-        if cfg_file == '':
-            print("No config file assigned")
-            sys.exit(0)
-        else:
-            if option == OPT_UNPACK:
-                do_unpack(cfg_file)
-            elif option == OPT_STUFF:
-                do_stuff(cfg_file)
-            else:
-                do_pack(cfg_file)
-    elif args.read:
-        # -r spinor all out.bin
-        # -r nand 0x1000 0x100 out.bin
-        arg_count = len(args.read)
-        if arg_count < 3:
-            print("At lease take 3 arguments")
-            sys.exit(0)
-        media = get_media(args.read[0])
-
-        try:
-            if media in [DEV_OTP, DEV_UNKNOWN]:
-                raise ValueError(f"Cannot support read {str.upper(args.read[0])}")
-            if arg_count == 3 and str.upper(args.read[1]) != 'ALL':
-                raise ValueError("Unknown arguments")
-        except ValueError as err:
-            sys.exit(err)
-
-        if str.upper(args.read[1]) == 'ALL':
-            do_img_read(media, 0, args.read[2], 0, option)
-        else:
-            try:
-                start = int(args.read[1], 0)
-                length = int(args.read[2], 0)
-            except ValueError as err:
-                print("Wrong start/length value")
-                sys.exit(err)
-            do_img_read(media, start, args.read[3], length, option)
-
-    elif args.write:
-        # -w spinor 0x1000 image.bin
-        # -w otp otp.json
-        # -w nand pack.img
-        arg_count = len(args.write)
-        if arg_count < 2:
-            print("At lease take 2 arguments")
-            sys.exit(0)
-        media = get_media(args.write[0])
-
-        try:
-            if media == DEV_UNKNOWN:
-                raise ValueError(f"Unknown storage media {str.upper(args.write[0])}")
-            if option == OPT_VERIFY and (media == DEV_DDR_SRAM or media == DEV_OTP):
-                raise ValueError(f"Do not support verify option on {str.upper(args.write[0])}")
-            if option == OPT_EXECUTE and media != DEV_DDR_SRAM:
-                raise ValueError(f"Do not support execution on {str.upper(args.write[0])}")
-            if option == OPT_RAW and media != DEV_NAND:
-                raise ValueError(f"Do not support raw write on {str.upper(args.write[0])}")
-        except ValueError as err:
-            sys.exit(err)
-
-        if arg_count == 2:
-            if media == DEV_OTP:
-                do_otp_program(args.write[1])
-            else:
-                do_pack_program(media, args.write[1], option)
-        else:
-            try:
-                start = int(args.write[1], 0)
-            except ValueError as err:
-                print("Wrong start value")
-                sys.exit(err)
-            do_img_program(media, start, args.write[2], option)
-
-    elif args.erase:
-        # -e spinor all
-        # -e nand 0x100000 0x10000 -o withbad
-        arg_count = len(args.erase)
-        if arg_count < 2:
-            print("At lease take 2 arguments")
-            sys.exit(0)
-        media = get_media(args.erase[0])
-
-        try:
-            if media in [DEV_DDR_SRAM, DEV_OTP, DEV_UNKNOWN]:
-                raise ValueError(f"Unknown storage media {str.upper(args.erase[0])}")
-            if arg_count == 2 and str.upper(args.erase[1]) != 'ALL':
-                raise ValueError("Unknown arguments")
-        except ValueError as err:
-            sys.exit(err)
-
-        if str.upper(args.erase[1]) == 'ALL':
-            do_img_erase(media, 0, 0, option)
-        else:
-            try:
-                start = int(args.erase[1], 0)
-                length = int(args.erase[2], 0)
-            except ValueError as err:
-                print("Wrong start/length value")
-                sys.exit(err)
-            do_img_erase(media, start, length, option)
-    elif args.storage:
-        # -s emmc 0x800000
-        # -s emmc -o remove
-        arg_count = len(args.erase)
-        if arg_count != 2 and option != OPT_EJECT:
-            print("Takes 2 arguments. Storage device and reserved size")
-            sys.exit(0)
-        media = get_media(args.storage[0])
-        try:
-            if media not in [DEV_SD_EMMC]:
-                raise ValueError("Only support eMMC/SD")
-            if option != OPT_NONE and option != OPT_EJECT:
-                raise ValueError("Unsupported option")
-        except ValueError as err:
-            sys.exit(err)
-
-        if option == OPT_EJECT:
-            do_msc(media, 0, OPT_EJECT)
-        else:
-            try:
-                reserve = int(args.storage[1], 0)
-            except ValueError as err:
-                print("Wrong reserve size")
-                sys.exit(err)
-            do_msc(media, reserve)
-    elif args.version:
-        print('NuWriter ' + __version__)
-        print(__copyright__)
-
-
-
 # Here goes the main function
 if __name__ == "__main__":
-    main()
+    print("The CLI main function is replaced by GUI main function @ nuwriterUI.py")

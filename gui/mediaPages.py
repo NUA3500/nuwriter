@@ -52,7 +52,7 @@ class MediaPage(QWidget):
         self.addWriteArgument()
         self.addReadArgument()
 
-        if media != DEV_DDR_SRAM:
+        if media != DEV_DDR_SRAM and media != DEV_SD_EMMC:
             self.addEraseArgument()
 
         if media == DEV_SD_EMMC:

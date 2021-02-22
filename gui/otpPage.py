@@ -30,7 +30,7 @@ class PovPage(QWidget):
 
         # [1] QSPI0CKF: QSPI0 Clock Frequency Selection
         _bit1_0 = QRadioButton("QSPI clock is 30 MHz")
-        _bit1_1 = QRadioButton("QSPI clock is 50 MHz")
+        _bit1_1 = QRadioButton("QSPI clock is 60 MHz")
 
         _GroupBit1 = QGroupBox("QSPI0 Clock Frequency Selection")
         LayoutBit1 = QHBoxLayout()
@@ -509,7 +509,7 @@ class OtpPage(QWidget):
                 boot_cfg["posotp"] = "enable"
 
             if _pov & (1 << 1):
-                boot_cfg["qspiclk"] = "50mhz"
+                boot_cfg["qspiclk"] = "60mhz"
 
             if _pov & (1 << 2):
                 boot_cfg["wdt0en"] = "enable"
