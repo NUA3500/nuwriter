@@ -228,7 +228,7 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
         self.conf.write(open(self.iniFilePath, 'w', encoding='utf-8'))
 
         self.text_browser.clear()
-        print(f'do_attach({iniFile})')
+        # print(f'do_attach({iniFile})')
 
         try:
             do_attach(iniFile)
@@ -293,7 +293,7 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
         self.conf.write(open(self.iniFilePath, 'w', encoding='utf-8'))
 
         try:
-            print(f'do_img_read({media}, {start}, {fileStr}, {length}, {option})')
+            # print(f'do_img_read({media}, {start}, {fileStr}, {length}, {option})')
             do_img_read(media, start, fileStr, length, option)
         except SystemExit as e:
             print(f'SystemExit: {e}')
@@ -362,13 +362,13 @@ class Ui(QtWidgets.QMainWindow, Ui_MainWindow):
 
         try:
             if media == DEV_OTP:
-                print(f'do_otp_program({image_file_name})')
+                # print(f'do_otp_program({image_file_name})')
                 do_otp_program(image_file_name)
             elif ispack:
-                print(f'do_pack_program({media}, {image_file_name}, {option})')
+                # print(f'do_pack_program({media}, {image_file_name}, {option})')
                 do_pack_program(media, image_file_name, option)
             else:
-                print(f'do_img_program({media}, {start}, {image_file_name}, {option})')
+                # print(f'do_img_program({media}, {start}, {image_file_name}, {option})')
                 do_img_program(media, start, image_file_name, option)
         except SystemExit as e:
             print(f'SystemExit: {e}')

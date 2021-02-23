@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QDial, QDialog, QGridLayout, QGroupBox, QHBoxLayout, QLabel, QLineEdit,
         QProgressBar, QPushButton, QRadioButton, QScrollBar, QSizePolicy,
         QSlider, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
-        QVBoxLayout, QFormLayout, QWidget)
+        QVBoxLayout, QFormLayout, QWidget, QButtonGroup)
 
 import os
 
@@ -97,6 +97,11 @@ class MediaPage(QWidget):
         if self._media != DEV_DDR_SRAM:
             self.radioData = QRadioButton("Data")
             self.radioPack = QRadioButton("Pack")
+
+
+            self.btngroup1 = QButtonGroup()
+            self.btngroup1.addButton(self.radioData)
+            self.btngroup1.addButton(self.radioPack)
 
             self.radioPack.toggled.connect(self.onRadioToggled)
             self.radioPack.toggled.connect(self.onRadioToggled)
