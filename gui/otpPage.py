@@ -11,6 +11,34 @@ from PyQt5.QtWidgets import (QApplication, QCheckBox, QComboBox, QDateTimeEdit,
         QSlider, QSpinBox, QStyleFactory, QTableWidget, QTabWidget, QTextEdit,
         QVBoxLayout, QFormLayout, QWidget, QButtonGroup, QPlainTextEdit, QLineEdit, QFileDialog)
 
+
+class KeySizeMeta(QWidget):
+
+    def __init__(self, title="", parent=None):
+        super(KeySizeMeta, self).__init__(parent)
+
+        mainLayout = QVBoxLayout()
+        self.keyEdit = QLineEdit()
+        self.sizeEdit = QLineEdit()
+        self.metaEdit = QLineEdit()
+
+        _HLayout1 = QHBoxLayout()
+        _HLayout1.addWidget(QLabel(f"{title} Key"))
+        _HLayout1.addWidget(self.keyEdit)
+
+        _HLayout2 = QHBoxLayout()
+        _HLayout2.addWidget(QLabel(f"{title} Size"))
+        _HLayout2.addWidget(self.sizeEdit)
+        _HLayout2.addWidget(QLabel(f"{title} Meta"))
+        _HLayout2.addWidget(self.metaEdit)
+
+        mainLayout.addLayout(_HLayout1)
+        mainLayout.addLayout(_HLayout2)
+
+        mainLayout.setContentsMargins(0, 0, 0, 0)
+
+        self.setLayout(mainLayout)
+
 class PovPage(QWidget):
     def __init__(self, val=0, parent=None):
         super(PovPage, self).__init__(parent)
@@ -29,7 +57,7 @@ class PovPage(QWidget):
         _GroupBit0.setLayout(LayoutBit0)
 
         # [1] QSPI0CKF: QSPI0 Clock Frequency Selection
-        _bit1_0 = QRadioButton("QSPI clock is 30 MHz")
+        _bit1_0 = QRadioButton("QSPI clock is 36 MHz")
         _bit1_1 = QRadioButton("QSPI clock is 60 MHz")
 
         _GroupBit1 = QGroupBox("QSPI0 Clock Frequency Selection")
@@ -238,9 +266,9 @@ class DpmPlmPage(QWidget):
         _plmLayout = QHBoxLayout()
         _plmGroup.setLayout(_plmLayout)
 
-        for i, desc in enumerate(["OEM", "Deployed", "RMA"]):
-            _btn = QCheckBox(desc)
-            _btn.stateChanged.connect(lambda state, i=i: self.checkPlmBit(state, i))
+        for i, desc in enumerate(["OEM", "Deployed", "RMA", "PRMA"]):
+            _btn = QRadioButton(desc)
+            _btn.clicked.connect(lambda _, i=i: (self.setPlmStage(i)))
             _plmLayout.addWidget(_btn)
 
         mainLayout = QVBoxLayout()
@@ -273,18 +301,21 @@ class DpmPlmPage(QWidget):
         self.dpmVal |= ((val &_mask) << lsb)
         self.editDpm.setText(hex(self.dpmVal))
 
-    def checkPlmBit(self, state, lsb):
 
-        if state:
-            val = 1
-        else:
-            val = 0
+    # def get_plm(plm) -> int:
+    #     return {
+    #         'oem': 0x1,
+    #         'deploy': 0x3,
+    #         'rma':  0x7,
+    #         'prma': 0xF
+    #     }.get(plm, 0)
 
-        _mask = 1
+    def setPlmStage(self, i):
 
-        self.plmVal &= ~(_mask << lsb)
-        self.plmVal |= ((val &_mask) << lsb)
-        self.editPlm.setText(hex(self.plmVal))
+        if i < 4:
+            _plm = [0x1, 0x3, 0x7, 0xF]
+            self.plmVal = _plm[i]
+            self.editPlm.setText(hex(self.plmVal))
 
 class MiscPage(QWidget):
     def __init__(self, parent=None):
@@ -304,17 +335,17 @@ class MiscPage(QWidget):
         _Layout = QHBoxLayout()
         _Group.setLayout(_Layout)
 
-        mac0LineEdit = QLineEdit()
-        mac1LineEdit = QLineEdit()
+        self.mac0LineEdit = QLineEdit()
+        self.mac1LineEdit = QLineEdit()
 
-        mac0LineEdit.setInputMask('HH:HH:HH:HH:HH:HH;_')
-        mac1LineEdit.setInputMask('HH:HH:HH:HH:HH:HH;_')
+        self.mac0LineEdit.setInputMask('HH:HH:HH:HH:HH:HH;_')
+        self.mac1LineEdit.setInputMask('HH:HH:HH:HH:HH:HH;_')
 
 
         _Layout.addWidget(QLabel("MAC0 address"))
-        _Layout.addWidget(mac0LineEdit)
+        _Layout.addWidget(self.mac0LineEdit)
         _Layout.addWidget(QLabel("MAC1 address"))
-        _Layout.addWidget(mac1LineEdit)
+        _Layout.addWidget(self.mac1LineEdit)
         self.mainLayout.addWidget(_Group)
 
     def addDplyPwd(self):
@@ -323,8 +354,8 @@ class MiscPage(QWidget):
         _Layout = QHBoxLayout()
         _Group.setLayout(_Layout)
 
-        dplypwdEdit = QLineEdit()
-        _Layout.addWidget(dplypwdEdit)
+        self.dplypwdEdit = QLineEdit()
+        _Layout.addWidget(self.dplypwdEdit)
         self.mainLayout.addWidget(_Group)
 
 
@@ -334,8 +365,8 @@ class MiscPage(QWidget):
         _Layout = QHBoxLayout()
         _Group.setLayout(_Layout)
 
-        secureText = QPlainTextEdit()
-        _Layout.addWidget(secureText)
+        self.secureText = QPlainTextEdit()
+        _Layout.addWidget(self.secureText)
         self.mainLayout.addWidget(_Group)
 
     def addNonSecure(self):
@@ -344,8 +375,8 @@ class MiscPage(QWidget):
         _Layout = QHBoxLayout()
         _Group.setLayout(_Layout)
 
-        nonSecureText = QPlainTextEdit()
-        _Layout.addWidget(nonSecureText)
+        self.nonSecureText = QPlainTextEdit()
+        _Layout.addWidget(self.nonSecureText)
         self.mainLayout.addWidget(_Group)
 
 
@@ -354,8 +385,8 @@ class KeyPage(QWidget):
         super(KeyPage, self).__init__(parent)
 
         self.mainLayout = QVBoxLayout()
-        self.tabMedia = QTabWidget()
-        self.mainLayout.addWidget(self.tabMedia)
+        # self.tabMedia = QTabWidget()
+        # self.mainLayout.addWidget(self.tabMedia)
 
         self.addHardwareUniqueKey()
         self.addKeyStorage()
@@ -366,33 +397,36 @@ class KeyPage(QWidget):
 
     def addHardwareUniqueKey(self):
 
-        _Group = QGroupBox("HUK0, HUK1, and HUK2")
+        _Group = QGroupBox("Hardware Unique Key")
         _Layout = QVBoxLayout()
         _Group.setLayout(_Layout)
 
-        huk0Edit = QPlainTextEdit()
-        huk1Edit = QPlainTextEdit()
-        huk2Edit = QPlainTextEdit()
-        _Layout.addWidget(huk0Edit)
-        _Layout.addWidget(huk1Edit)
-        _Layout.addWidget(huk2Edit)
-        # self.mainLayout.addWidget(_Group)
-        self.tabMedia.addTab(_Group, "Hardware Unique Key")
+        # _desc = r'“huk0”, “huk1”, and “huk2” are hardware unique keys that stores in OTP. The usage is application specified. The maximum length of these keys are 256 bits. And meta fields maps to the METADATA register used by Key Store. Please refer to the Key Store chapter of MA35D1 Technical Reference Manual for the description of each bit of this element.'
+        # _Layout.addWidget(QLabel(_desc))
+
+        self.huk0Option = KeySizeMeta("HUK0")
+        self.huk1Option = KeySizeMeta("HUK1")
+        self.huk2Option = KeySizeMeta("HUK2")
+        _Layout.addWidget(self.huk0Option)
+        _Layout.addWidget(self.huk1Option)
+        _Layout.addWidget(self.huk2Option)
+        self.mainLayout.addWidget(_Group)
+        # self.tabMedia.addTab(_Group, "Hardware Unique Key")
 
     def addKeyStorage(self):
 
-        _Group = QGroupBox("Key Storage 3, Key Storage 4, and Key Storage 5")
+        _Group = QGroupBox("Key Storage")
         _Layout = QVBoxLayout()
         _Group.setLayout(_Layout)
 
-        keyStorage3Edit = QPlainTextEdit()
-        keyStorage4Edit = QPlainTextEdit()
-        keyStorage5Edit = QPlainTextEdit()
-        _Layout.addWidget(keyStorage3Edit)
-        _Layout.addWidget(keyStorage4Edit)
-        _Layout.addWidget(keyStorage5Edit)
-        # self.mainLayout.addWidget(_Group)
-        self.tabMedia.addTab(_Group, "Key Storage")
+        self.keyStorage3Option = KeySizeMeta("KEY3")
+        self.keyStorage4Option = KeySizeMeta("KEY4")
+        self.keyStorage5Option = KeySizeMeta("KEY5")
+        _Layout.addWidget(self.keyStorage3Option)
+        _Layout.addWidget(self.keyStorage4Option)
+        _Layout.addWidget(self.keyStorage5Option)
+        self.mainLayout.addWidget(_Group)
+        # self.tabMedia.addTab(_Group, "Key Storage")
 
 
     def addAesKey(self):
@@ -401,14 +435,14 @@ class KeyPage(QWidget):
         _Layout = QVBoxLayout()
         _Group.setLayout(_Layout)
 
-        publicxEdit = QPlainTextEdit()
-        publicyEdit = QPlainTextEdit()
-        aeskeyEdit = QPlainTextEdit()
-        _Layout.addWidget(publicxEdit)
-        _Layout.addWidget(publicyEdit)
-        _Layout.addWidget(aeskeyEdit)
-        # self.mainLayout.addWidget(_Group)
-        self.tabMedia.addTab(_Group, "IBR Key")
+        self.publicxEdit = QLineEdit()
+        self.publicyEdit = QLineEdit()
+        self.aeskeyEdit = QLineEdit()
+        _Layout.addWidget(self.publicxEdit)
+        _Layout.addWidget(self.publicyEdit)
+        _Layout.addWidget(self.aeskeyEdit)
+        self.mainLayout.addWidget(_Group)
+        # self.tabMedia.addTab(_Group, "IBR Key")
 
 class OtpPage(QWidget):
     def __init__(self, val = 0, parent=None):
@@ -634,51 +668,105 @@ class OtpPage(QWidget):
 
                 dpm_plm["dpm"] = dpm
 
-            # if _plmVal:
-            #     plm = {}
-            #     dpm_plm["plm"] = plm
+            if _plmVal == 0x1:
+                dpm_plm["plm"] = "oem"
+            elif _plmVal == 0x3:
+                dpm_plm["plm"] = "deploy"
+            elif _plmVal == 0x7:
+                dpm_plm["plm"] = "rma"
+            elif _plmVal == 0xf:
+                dpm_plm["plm"] = "prma"
 
             self.otp_dict["dpm_plm"] = dpm_plm
 
+    def _exportMAC01(self):
 
-    def exportFile(self):
+        if self.exportMAC0.isChecked():
+            text = self.miscPage.mac0LineEdit.text()
+            addr = text.replace(':', '')
+            self.otp_dict["mac0"] = addr
+
+        if self.exportMAC1.isChecked():
+            text = self.miscPage.mac1LineEdit.text()
+            addr = text.replace(':', '')
+            self.otp_dict["mac1"] = addr
+
+    def _exportDplyPwd(self):
+
+        if self.exportDplypwd.isChecked():
+            text = self.miscPage.dplypwdEdit.text()
+            self.otp_dict["dplypwd"] = text
+
+    def _exportSecureNonSecure(self):
+
+        if self.exportSecure.isChecked():
+            text = self.miscPage.secureText.toPlainText()
+            self.otp_dict["sec"] = text
+
+        if self.exportNonSecure.isChecked():
+            text = self.miscPage.nonSecureText.toPlainText()
+            self.otp_dict["nonsec"] = text
+
+    def _exportKey(self):
+        if self.exportKey.isChecked():
+
+                options = [
+                    self.keyPage.huk0Option,
+                    self.keyPage.huk1Option,
+                    self.keyPage.huk2Option,
+                    self.keyPage.keyStorage3Option,
+                    self.keyPage.keyStorage4Option,
+                    self.keyPage.keyStorage5Option,
+                ]
+
+                for i, opt in enumerate(options):
+                    if i < 3:
+                        key = f"huk{i}"
+                    else:
+                        key = f"key{i}"
+
+                    _dict = {}
+
+                    _dict["key"] = opt.keyEdit.text()
+                    _dict["size"] = opt.sizeEdit.text()
+                    _dict["meta"] = opt.metaEdit.text()
+
+                    self.otp_dict[key] = _dict
+
+                self.otp_dict["publicx"] = self.keyPage.publicxEdit.text()
+                self.otp_dict["publicy"] = self.keyPage.publicyEdit.text()
+                self.otp_dict["aeskey"] = self.keyPage.aeskeyEdit.text()
+
+    def _exportJson(self):
 
         # filename = "otp_export.json"
         self.otp_dict = {}
 
         self._exportPov()
+        self._exportDpmPlm()
+        self._exportMAC01()
+        self._exportDplyPwd()
+        self._exportSecureNonSecure()
+        self._exportKey()
 
 
-        print(self.otp_dict)
+        # print(self.otp_dict)
 
 
+    def exportFile(self):
+        fileName, _ = QFileDialog.getSaveFileName(self,
+                                    "save file",
+                                    os.getcwd(),
+                                    "All Files (*)")
 
+        if fileName != "":
+            self.exportFileEdit.setText(fileName)
 
+            self._exportJson()
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    # def exportFile(self):
-    #     fileName, _ = QFileDialog.getSaveFileName(self,
-    #                                 "save file",
-    #                                 os.getcwd(),
-    #                                 "All Files (*)")
-
-    #     if fileName != "":
-    #         self.exportFileEdit.setText(fileName)
-    #         return
+            with open(fileName, "w") as write_file:
+                # json.dump(self.otp_dict, write_file)
+                json.dump(self.otp_dict, write_file, indent=4)
 
 if __name__ == '__main__':
 
