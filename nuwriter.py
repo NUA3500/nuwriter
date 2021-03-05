@@ -490,6 +490,7 @@ def __pack_program(dev, media, pack_image, option) -> int:
         bar.close()
         dev.read(4)
         if option == OPT_VERIFY:
+            dev.set_media(media)
             cmd = img_start.to_bytes(8, byteorder='little')
             cmd += img_length.to_bytes(8, byteorder='little')
             cmd += ACT_READ.to_bytes(4, byteorder='little')
@@ -504,11 +505,14 @@ def __pack_program(dev, media, pack_image, option) -> int:
             text = f"Verifying {i}/{image_cnt}"
             bar = tqdm(total=img_length, position=dev.get_id(), ascii=True, desc=text)
             while remain > 0:
-                xfer_size = TRANSFER_SIZE if remain > TRANSFER_SIZE else remain
+                ack = dev.read(4)
+                # Get the transfer length of next read
+                xfer_size = int.from_bytes(ack, byteorder="little")
+
                 data = dev.read(xfer_size)
-                dev.write(xfer_size)  # ack
+                dev.write(xfer_size.to_bytes(4, byteorder='little'))
                 offset = img_length - remain
-                if data != pack_image.img_content(i, offset, xfer_size):
+                if data != bytearray(pack_image.img_content(i, offset, xfer_size)):
                     print("Verify failed")
                     return -1
                 remain -= xfer_size
@@ -587,6 +591,7 @@ def __img_program(dev, media, start, img_data, option) -> int:
     dev.read(4)
     bar.close()
     if option == OPT_VERIFY:
+        dev.set_media(media)
         cmd = start.to_bytes(8, byteorder='little')
         cmd += img_length.to_bytes(8, byteorder='little')
         cmd += ACT_READ.to_bytes(4, byteorder='little')
@@ -601,11 +606,14 @@ def __img_program(dev, media, start, img_data, option) -> int:
         remain = img_length
         bar = tqdm(total=img_length, position=dev.get_id(), ascii=True, desc="Verifying")
         while remain > 0:
-            xfer_size = TRANSFER_SIZE if remain > TRANSFER_SIZE else remain
+            ack = dev.read(4)
+            # Get the transfer length of next read
+            xfer_size = int.from_bytes(ack, byteorder="little")
+
             data = dev.read(xfer_size)
-            dev.write(xfer_size.to_bytes(4, byteorder='little'))  # ack
+            dev.write(xfer_size.to_bytes(4, byteorder='little'))    #ack
             offset = img_length - remain
-            if data != img_data[offset: offset + xfer_size]:
+            if data != bytearray(img_data[offset: offset + xfer_size]):
                 print("Verify failed")
                 return -1
             remain -= xfer_size
@@ -1418,7 +1426,7 @@ def main():
         try:
             if media == DEV_UNKNOWN:
                 raise ValueError(f"Unknown storage media {str.upper(args.write[0])}")
-            if option == OPT_VERIFY and (media == DEV_DDR_SRAM or media == DEV_OTP):
+            if option == OPT_VERIFY and media == DEV_OTP:
                 raise ValueError(f"Do not support verify option on {str.upper(args.write[0])}")
             if option == OPT_EXECUTE and media != DEV_DDR_SRAM:
                 raise ValueError(f"Do not support execution on {str.upper(args.write[0])}")
