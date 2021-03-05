@@ -138,6 +138,18 @@ class XUsbComList:
             self.devices[i] = XUsbCom(self.devices[i])
             self.devices[i].set_id(i)
 
+    def __del__(self):
+        if len(self.devices) != 0:
+            for dev in self.devices:
+                try:
+                    usb.util.dispose_resources(dev.dev)
+                    # dev.dev.reset()
+                    dev = None
+                #except (usb.core.USBError, NotImplementedError) as err:
+                except usb.core.USBError as err:
+                    sys.exit(err)
+
+        self.devices = None
 
     def get_dev(self):
         return self.devices
