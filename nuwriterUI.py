@@ -4,12 +4,7 @@ import sys, os
 
 from PyQt5 import QtWidgets, QtCore, QtGui
 
-# FIXME: without dispose_resources, the ui tool raises an exception.
-# SystemExit: [Errno 13] Access denied (insufficient permissions)
-# but, with dispose_resources, the command tool raises timeout error.
-
-# from nuwriter import *
-from nuwriterTEMP import (DEV_DDR_SRAM, DEV_NAND, DEV_OTP, DEV_SD_EMMC,
+from nuwriter import (DEV_DDR_SRAM, DEV_NAND, DEV_OTP, DEV_SD_EMMC,
         DEV_SPINAND, DEV_SPINOR, DEV_USBH,
         OPT_NONE, OPT_SCRUB, OPT_WITHBAD, OPT_EXECUTE, OPT_VERIFY,
         OPT_UNPACK, OPT_RAW, OPT_EJECT,

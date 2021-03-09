@@ -620,6 +620,12 @@ def __img_program(dev, media, start, img_data, option) -> int:
             data = dev.read(xfer_size)
             dev.write(xfer_size.to_bytes(4, byteorder='little'))    #ack
             offset = img_length - remain
+
+            # For SD/eMMC
+            if xfer_size > remain:
+                xfer_size = remain
+                data = data[0: remain]
+
             if data != bytearray(img_data[offset: offset + xfer_size]):
                 print("Verify failed")
                 return -1
@@ -1023,7 +1029,7 @@ def do_pack(cfg_file) -> None:
         out += b'\xFF' * 4
         out += data
         # Always put image start @ 16 byte boundary
-        pad = 16 - (img_len + 8) & 0xF        
+        pad = 16 - (img_len + 8) & 0xF
         if pad != 16:
             out += b'\xFF' * pad
 
