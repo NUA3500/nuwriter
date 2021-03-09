@@ -709,7 +709,7 @@ def do_img_read(media, start, out_file_name, length=0x1, option=OPT_NONE) -> Non
         bar.update(xfer_size)
     try:
         with open(out_file_name, "wb") as out_file:
-            out_file.write(data)
+            out_file.write(data[0:length])
     except (IOError, OSError) as err:
         print(f"Open {out_file_name} failed")
         sys.exit(err)
