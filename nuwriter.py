@@ -697,12 +697,11 @@ def do_img_read(media, start, out_file_name, length=0x1, option=OPT_NONE) -> Non
     data = b''
     remain = length
 
-    while True:
+    while remain > 0:
         ack = dev.read(4)
         # Get the transfer length of next read
         xfer_size = int.from_bytes(ack, byteorder="little")
-        if xfer_size == 0:
-            break
+
         data += dev.read(xfer_size)
         dev.write(xfer_size.to_bytes(4, byteorder='little'))    # ack
         remain -= xfer_size
