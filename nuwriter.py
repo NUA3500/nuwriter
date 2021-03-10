@@ -517,6 +517,12 @@ def __pack_program(dev, media, pack_image, option) -> int:
                 data = dev.read(xfer_size)
                 dev.write(xfer_size.to_bytes(4, byteorder='little'))
                 offset = img_length - remain
+
+                # For SD/eMMC
+                if xfer_size > remain:
+                    xfer_size = remain
+                    data = data[0: remain]
+
                 if data != bytearray(pack_image.img_content(i, offset, xfer_size)):
                     print("Verify failed")
                     return -1
