@@ -1173,7 +1173,7 @@ def do_convert(cfg_file) -> None:
 
                 # Write encrypt image
                 try:
-                    with open(now.strftime("%m%d-%H%M%S%f") + '/enc_' + img["file"], "wb") as enc_file:
+                    with open(now.strftime("%m%d-%H%M%S%f") + '/enc_' + os.path.basename(img["file"]), "wb") as enc_file:
                         enc_file.write(data_out)
                 except (IOError, OSError) as err:
                     print("Create encrypt file failed")
